@@ -1,0 +1,4 @@
+Grouped-Query Attention (GQA) interpolates between Multi-Head Attention and Multi-Query Attention.
+GQA divides the query heads into groups, with each group sharing a single key and value head.
+This dramatically reduces memory bandwidth demands during inference while maintaining high generation quality.
+RMSNorm optimizes training efficiency by enforcing scale invariance without centering activations around their mean.

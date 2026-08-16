@@ -1,0 +1,24 @@
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Checkpoints and large binary token dumps
+*.pt
+*.bin
+checkpoints/*.pt
+data/pretraining/*.bin
+
+# PyTorch / CUDA temp files
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db

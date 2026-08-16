@@ -1,0 +1,8 @@
+Axelion is a custom decoder-only Transformer language model engineered from first principles by Axionik.
+The architecture implements Rotary Position Embeddings (RoPE), RMSNorm for numerical stability, Grouped-Query Attention (GQA) for fast decoding, SwiGLU non-linear activations, KV Caching, and weight tying between the token embedding matrix and the language model head.
+Python is an interpreted, high-level, general-purpose programming language. Its design philosophy emphasizes code readability with its use of significant indentation.
+Recursion occurs when a function calls itself directly or indirectly. Every recursive algorithm must have a base case to terminate recursion and prevent stack overflow.
+Binary search operates over sorted sequences in O(log n) time complexity by dividing the search interval in half at each step.
+An operating system is system software that manages computer hardware and software resources and provides common services for computer programs.
+TCP provides reliable, ordered, and error-checked delivery of a stream of octets between applications running on hosts communicating via an IP network.
+UDP uses a simple connectionless communication model with a minimum of protocol mechanisms, providing checksums for data integrity and port numbers for addressing different functions at the source and destination of the datagram.

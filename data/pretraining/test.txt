@@ -1,0 +1,2 @@
+Rotary Position Embedding (RoPE) encodes position information by multiplying key and query representations by a rotation matrix.
+RoPE exhibits natural decay of attention weights across increasing token distances and generalizes effectively to longer sequence lengths.
