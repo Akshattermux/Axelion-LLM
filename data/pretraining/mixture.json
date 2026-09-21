@@ -1,0 +1,27 @@
+{
+  "purpose": "Axelion Mini causal pretraining corpus",
+  "target_tokens": 100000000,
+  "sampling_weights": {
+    "programming": 0.45,
+    "computer_science": 0.15,
+    "general_education": 0.15,
+    "mathematics_reasoning": 0.10,
+    "history": 0.075,
+    "social_science": 0.075
+  },
+  "quality_rules": [
+    "deduplicate normalized documents",
+    "remove HTML navigation, SEO boilerplate, and spam",
+    "exclude PII and malware or exploit dumps",
+    "exclude minified JavaScript, vendored dependencies, generated files, and binary-like text",
+    "prefer explanatory code, documentation, textbooks, and factual reference material"
+  ],
+  "source_layout": {
+    "programming": "data/raw/pretraining/programming/",
+    "computer_science": "data/raw/pretraining/computer_science/",
+    "general_education": "data/raw/pretraining/general_education/",
+    "mathematics_reasoning": "data/raw/pretraining/mathematics_reasoning/",
+    "history": "data/raw/pretraining/history/",
+    "social_science": "data/raw/pretraining/social_science/"
+  }
+}

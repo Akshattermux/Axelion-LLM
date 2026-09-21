@@ -126,14 +126,18 @@ def main():
     p_params = subparsers.add_parser("params", help="Show exact parameter counts and memory estimates across presets")
 
     # train
-    p_train = subparsers.add_parser("train", help="Run pretraining")
-    p_train.add_argument("--size", default="micro", choices=["micro", "mini", "medium", "large"])
+    p_train = subparsers.add_parser("train", help="Run causal pretraining")
+    p_train.add_argument("--size", default="mini", choices=["micro", "mini", "medium", "large"])
     p_train.add_argument("--data", default="train_data.txt")
     p_train.add_argument("--bin", default="data/pretraining/train.bin")
-    p_train.add_argument("--batch-size", type=int, default=4)
-    p_train.add_argument("--grad-accum", type=int, default=4)
-    p_train.add_argument("--max-iters", type=int, default=100)
-    p_train.add_argument("--lr", type=float, default=1e-3)
+    p_train.add_argument("--val-bin", default="data/pretraining/validation.bin")
+    p_train.add_argument("--batch-size", type=int, default=1)
+    p_train.add_argument("--grad-accum", type=int, default=16)
+    p_train.add_argument("--max-iters", type=int, default=10000)
+    p_train.add_argument("--lr", type=float, default=3e-4)
+    p_train.add_argument("--min-lr", type=float, default=3e-5)
+    p_train.add_argument("--warmup-steps", type=int, default=500)
+    p_train.add_argument("--benchmark-steps", type=int, default=0)
     p_train.add_argument("--device", default=None)
 
     # sft
@@ -167,12 +171,16 @@ def main():
         from training.pretrain import pretrain
         pretrain(
             train_bin=args.bin,
+            val_bin=args.val_bin,
             data_txt=args.data if os.path.exists(args.data) else None,
             size=args.size,
             batch_size=args.batch_size,
             grad_accum_steps=args.grad_accum,
             max_iters=args.max_iters,
             max_lr=args.lr,
+            min_lr=args.min_lr,
+            warmup_steps=args.warmup_steps,
+            benchmark_steps=args.benchmark_steps,
             device=args.device,
         )
     elif args.command == "sft":

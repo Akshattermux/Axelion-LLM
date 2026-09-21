@@ -82,26 +82,69 @@ config = ModelConfig(
 
 ---
 
-## 5. Training Axelion (`train.py`)
+## 5. Build a quality-weighted corpus
 
-1. Open `train.py` and set training hyperparameters:
-   * `batch_size`: Micro-batch size per step (e.g. `4` or `8`).
-   * `gradient_accumulation_steps`: Accumulates gradients across multiple micro-batches to simulate larger batch sizes (e.g. `4`).
-   * `max_iters`: Total training steps.
-   * `max_lr` / `min_lr`: Warmup and Cosine learning rate decay boundaries.
+The first phase is causal language-model pretraining, not chatbot training. The target mixture is defined in `data/pretraining/mixture.json`: 45% programming, 15% computer science, 15% general education, 10% mathematics/reasoning, 7.5% history, and 7.5% social science.
 
-2. Launch training:
-   ```bash
-   python train.py
-   ```
+Put reviewed source files under `data/raw/pretraining/<category>/`, then build a cleaned, deduplicated corpus:
 
-*Checkpoints are saved automatically to `ckpt.pt` whenever validation loss improves.*
+```bash
+python scripts/prepare_corpus.py --output data/pretraining/train.txt
+```
 
----
+Keep validation material separate. Do not reuse training text for `validation.txt`.
 
-## 6. Text Generation & Inference
+## 6. Prepare train and validation tokens
 
-Once `ckpt.pt` is generated, run inference:
+```bash
+python scripts/prepare_data.py --mode pretrain
+```
+
+This creates `data/pretraining/train.bin` and `data/pretraining/validation.bin`. Both use causal next-token targets; no assistant/chat loss masking is involved in this phase.
+
+## 7. Measure the hardware first
+
+Run a short Mini benchmark before choosing a 12-hour token budget:
+
+```bash
+python train.py --size mini --benchmark-steps 100
+```
+
+The output reports tokens/sec and the estimated `12 hours * tokens/sec` budget. Use that measurement to set `--max-iters`; do not guess it in advance.
+
+## 8. Train Axelion Base (`train.py`)
+
+Mini remains the existing 12-layer, 768-dimensional architecture. Its T4-friendly defaults are batch size `1`, gradient accumulation `16`, learning rate `3e-4` to `3e-5`, warmup `500`, validation every `500` steps, and gradient checkpointing enabled.
+
+```bash
+python train.py --size mini --data-txt data/pretraining/train.txt --val-bin data/pretraining/validation.bin
+```
+
+Checkpoints include model weights, optimizer state, scaler state, iteration, train loss, validation loss, and perplexity. Resume after an interrupted run with:
+
+```bash
+python train.py --resume checkpoints/axelion-base-mini.pt --max-iters 10000
+```
+
+## 9. Evaluate Base checkpoints
+
+The fixed prompts in `tests/` cover coding, computer science/knowledge, history, and social science:
+
+```bash
+python training/evaluate.py --checkpoint checkpoints/axelion-base-mini.pt --val-bin data/pretraining/validation.bin --eval-dir tests
+```
+
+## 10. Instruction tuning comes later
+
+Only after the causal base run is evaluated should you run SFT to create Axelion Instruct:
+
+```bash
+python training/sft.py --base-ckpt checkpoints/axelion-base-mini.pt --output-ckpt checkpoints/axelion-instruct-mini.pt
+```
+
+## 11. Text Generation & Inference
+
+Once the base or instruct checkpoint is generated, run inference:
 
 * **General Autoregressive Text Completion**:
   ```bash

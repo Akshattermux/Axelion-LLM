@@ -1,4 +1,5 @@
 import argparse
+import json
 import math
 import os
 import sys
@@ -27,6 +28,22 @@ BENCHMARK_PROMPTS = [
     "What is an operating system?",
     "Explain TCP vs UDP.",
 ]
+
+
+def load_fixed_evaluations(eval_dir: str):
+    """Load the small, stable prompt suite used for checkpoint comparisons."""
+    prompts = []
+    if not os.path.isdir(eval_dir):
+        return prompts
+    for path in sorted(os.listdir(eval_dir)):
+        if not path.endswith(".jsonl"):
+            continue
+        with open(os.path.join(eval_dir, path), "r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    item = json.loads(line)
+                    prompts.append((item["category"], item["prompt"]))
+    return prompts
 
 
 def load_model(checkpoint_path: str, device: str = "cpu") -> Tuple[Axelion, ModelConfig, AxelionTokenizer]:
@@ -99,10 +116,32 @@ def evaluate_prompts(model, tokenizer, is_instruct: bool = False, device: str = 
         print("-" * 50)
 
 
+def evaluate_fixed_suite(model, tokenizer, eval_dir: str, is_instruct: bool, device: str):
+    prompts = load_fixed_evaluations(eval_dir)
+    if not prompts:
+        return
+    print("\n" + "=" * 60)
+    print(f"Fixed domain suite: {len(prompts)} prompts")
+    print("=" * 60)
+    for category, prompt_text in prompts:
+        if is_instruct:
+            prompt = tokenizer.apply_chat_template([{"role": "user", "content": prompt_text}], add_generation_prompt=True)
+            stop_tokens = [tokenizer.end_id, tokenizer.pad_id]
+        else:
+            prompt = f"Question: {prompt_text}\nAnswer:"
+            stop_tokens = [tokenizer.pad_id]
+        output = generate_text(
+            model=model, tokenizer=tokenizer, prompt=prompt, max_new_tokens=160,
+            temperature=0.0, top_p=0.9, stop_token_ids=stop_tokens, device=device,
+        )
+        print(f"\n[{category}] {prompt_text}\n{output.strip()}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Axelion Model Baseline or Instruct")
     parser.add_argument("--checkpoint", type=str, default="checkpoints/axelion-base-v0.1.pt", help="Path to checkpoint")
-    parser.add_argument("--val-bin", type=str, default="data/pretraining/train.bin", help="Validation binary path")
+    parser.add_argument("--val-bin", type=str, default="data/pretraining/validation.bin", help="Validation binary path")
+    parser.add_argument("--eval-dir", type=str, default="tests", help="Directory containing fixed JSONL evaluation prompts")
     parser.add_argument("--instruct", action="store_true", help="Run in Instruct mode with chat template")
     args = parser.parse_args()
 
@@ -120,6 +159,7 @@ def main():
             print(f"Validation Loss: {loss:.4f} | Perplexity: {ppl:.2f}")
 
     evaluate_prompts(model, tokenizer, is_instruct=args.instruct, device=device)
+    evaluate_fixed_suite(model, tokenizer, args.eval_dir, args.instruct, device)
 
 
 if __name__ == "__main__":
