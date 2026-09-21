@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Axelion Control Room</title>
+  <style>
+    :root { color-scheme: dark; --ink:#edf1f5; --muted:#8d9aa8; --line:#27313b; --panel:#111820; --accent:#ffb454; --accent-2:#63d6c1; }
+    * { box-sizing:border-box; } body { margin:0; background:radial-gradient(circle at 8% 0%,#263442 0,#0b1015 42%); color:var(--ink); font:15px/1.5 ui-sans-serif,system-ui,sans-serif; min-height:100vh; }
+    main { max-width:1120px; margin:auto; padding:44px 24px 56px; } header { display:flex; justify-content:space-between; align-items:end; gap:20px; margin-bottom:30px; } h1 { font:700 clamp(32px,6vw,68px)/.95 Georgia,serif; letter-spacing:-2px; margin:0; } p { color:var(--muted); } .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:2px; font-size:11px; font-weight:700; }
+    .status { border:1px solid var(--line); padding:10px 14px; background:#0e151c; } .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent-2); margin-right:8px; } .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px; } .panel { border:1px solid var(--line); background:color-mix(in srgb,var(--panel) 92%,transparent); padding:20px; } .metric { font-size:28px; font-weight:700; margin-top:5px; } .chat { display:grid; grid-template-columns:1fr 180px; gap:14px; } textarea { width:100%; min-height:180px; resize:vertical; background:#0b1117; color:var(--ink); border:1px solid var(--line); padding:14px; font:inherit; } button { cursor:pointer; background:var(--accent); color:#17120a; border:0; padding:12px 18px; font-weight:700; margin-top:10px; } button:disabled { opacity:.5; cursor:wait; } pre { white-space:pre-wrap; min-height:180px; margin:0; color:#d7e4e8; } @media(max-width:700px){ header,.chat { display:block; } .status { margin-top:18px; } .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body><main>
+  <header><div><div class="eyebrow">Axelion / operations</div><h1>Control room</h1><p>Inspect the running model and send a test prompt through the production API.</p></div><div class="status"><span class="dot"></span><span id="status">checking readiness</span></div></header>
+  <section class="grid"><div class="panel"><div class="eyebrow">model</div><div class="metric" id="model">--</div></div><div class="panel"><div class="eyebrow">parameters</div><div class="metric" id="params">--</div></div><div class="panel"><div class="eyebrow">device</div><div class="metric" id="device">--</div></div></section>
+  <section class="panel chat"><div><div class="eyebrow">chat probe</div><input id="key" type="password" placeholder="API key (optional)" style="width:100%;background:#0b1117;color:var(--ink);border:1px solid var(--line);padding:12px;margin:10px 0"><textarea id="prompt">Explain what Axelion is in one sentence.</textarea><br><button id="send">Send request</button></div><div><div class="eyebrow">response</div><pre id="answer">Waiting for a request.</pre></div></section>
+</main><script>
+const $ = id => document.getElementById(id);
+async function refresh(){ try { const r=await fetch('/health'); const d=await r.json(); $('status').textContent=d.status; $('model').textContent=d.model||'--'; $('params').textContent=d.parameters ? (d.parameters/1e6).toFixed(2)+'M' : '--'; $('device').textContent=d.device||'--'; } catch(e) { $('status').textContent='offline'; } }
+$('send').onclick=async()=>{ $('send').disabled=true; $('answer').textContent='Generating...'; try { const headers={'content-type':'application/json'}; if($('key').value) headers.authorization='Bearer '+$('key').value; const r=await fetch('/v1/chat/completions',{method:'POST',headers,body:JSON.stringify({messages:[{role:'user',content:$('prompt').value}],max_tokens:180,temperature:.7})}); const d=await r.json(); $('answer').textContent=d.choices?.[0]?.message?.content||d.detail||JSON.stringify(d,null,2); } catch(e){ $('answer').textContent=e.message; } finally { $('send').disabled=false; } };
+refresh(); setInterval(refresh,10000);
+</script></body></html>

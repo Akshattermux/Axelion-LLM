@@ -86,6 +86,28 @@ class ModelConfig:
     def n_embd(self) -> int:
         return self.dim
 
+    def calculate_params(self, non_embedding: bool = False) -> int:
+        """
+        Calculate the exact number of model parameters analytically without memory allocation.
+        Accounts for tied embeddings (tok_emb == lm_head), GQA, RoPE, and SwiGLU.
+        """
+        emb_params = self.vocab_size * self.dim
+        n_kv = self.n_kv_heads if self.n_kv_heads is not None else self.n_heads
+        wq = self.dim * (self.n_heads * self.head_dim)
+        wk = self.dim * (n_kv * self.head_dim)
+        wv = self.dim * (n_kv * self.head_dim)
+        wo = self.dim * self.dim
+        attn_params = wq + wk + wv + wo
+
+        ffn_params = 3 * self.dim * self.ffn_dim
+        layer_norm_params = 2 * self.dim
+        per_block = attn_params + ffn_params + layer_norm_params
+        total = self.n_layers * per_block + self.dim  # final norm
+
+        if not non_embedding:
+            total += emb_params
+        return total
+
     @classmethod
     def create_micro(cls, vocab_size: int = 50261):
         """Debug / CPU-friendly testing model (~6.5M params)."""

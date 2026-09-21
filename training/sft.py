@@ -1,3 +1,4 @@
+import contextlib
 import math
 import os
 import sys
@@ -47,7 +48,7 @@ def train_sft(
     ctx = (
         torch.autocast(device_type="cuda", dtype=PTDTYPE)
         if DEVICE == "cuda"
-        else torch.autocast(device_type="cpu", dtype=torch.bfloat16)
+        else (torch.autocast(device_type="cpu", dtype=torch.bfloat16) if DTYPE == "bfloat16" else contextlib.nullcontext())
     )
 
     tokenizer = AxelionTokenizer()

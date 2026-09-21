@@ -13,19 +13,28 @@ from axelion.tokenizer import AxelionTokenizer
 class MemmapDataset(Dataset):
     """
     High-throughput dataset that loads token IDs from a memory-mapped numpy binary file.
-    Efficient for large pretraining corpora.
+    Efficient for large pretraining corpora with fallback tiling for small corpora.
     """
 
     def __init__(self, bin_file_path: str, block_size: int):
         self.bin_file_path = bin_file_path
         self.block_size = block_size
         self.data = np.memmap(bin_file_path, dtype=np.uint16, mode="r")
+        self._is_short = len(self.data) <= self.block_size + 1
 
     def __len__(self):
-        return max(0, len(self.data) - self.block_size - 1)
+        if self._is_short:
+            return max(16, min(256, len(self.data)))
+        return max(1, len(self.data) - self.block_size - 1)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        chunk = self.data[idx : idx + self.block_size + 1].astype(np.int64)
+        if self._is_short:
+            repeats = (self.block_size + 2) // max(1, len(self.data)) + 2
+            tiled = np.tile(self.data, repeats)
+            offset = (idx * 17) % max(1, len(self.data))
+            chunk = tiled[offset : offset + self.block_size + 1].astype(np.int64)
+        else:
+            chunk = self.data[idx : idx + self.block_size + 1].astype(np.int64)
         x = torch.from_numpy(chunk[:-1])
         y = torch.from_numpy(chunk[1:])
         return x, y
