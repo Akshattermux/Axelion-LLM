@@ -50,13 +50,13 @@ def load_model(checkpoint_path: str, device: str = "cpu") -> Tuple[Axelion, Mode
     tokenizer = AxelionTokenizer()
     if os.path.exists(checkpoint_path):
         ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
-        config = ckpt.get("config", ModelConfig.create_micro(vocab_size=tokenizer.vocab_size))
+        config = ckpt.get("config", ModelConfig.create_1b(vocab_size=tokenizer.vocab_size))
         config.vocab_size = max(config.vocab_size, tokenizer.vocab_size)
         model = Axelion(config).to(device)
         model.load_checkpoint_weights(ckpt["model"])
     else:
-        print(f"Warning: {checkpoint_path} not found. Using initialized micro model.")
-        config = ModelConfig.create_micro(vocab_size=tokenizer.vocab_size)
+        print(f"Warning: {checkpoint_path} not found. Using initialized 1B model.")
+        config = ModelConfig.create_1b(vocab_size=tokenizer.vocab_size)
         model = Axelion(config).to(device)
     model.eval()
     return model, config, tokenizer
@@ -139,7 +139,7 @@ def evaluate_fixed_suite(model, tokenizer, eval_dir: str, is_instruct: bool, dev
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Axelion Model Baseline or Instruct")
-    parser.add_argument("--checkpoint", type=str, default="checkpoints/axelion-base-v0.1.pt", help="Path to checkpoint")
+    parser.add_argument("--checkpoint", type=str, default="checkpoints/axelion-base-1b.pt", help="Path to checkpoint")
     parser.add_argument("--val-bin", type=str, default="data/pretraining/validation.bin", help="Validation binary path")
     parser.add_argument("--eval-dir", type=str, default="tests", help="Directory containing fixed JSONL evaluation prompts")
     parser.add_argument("--instruct", action="store_true", help="Run in Instruct mode with chat template")

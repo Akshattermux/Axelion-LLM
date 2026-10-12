@@ -87,7 +87,7 @@ def run_benchmark(model, tokenizer, is_instruct: bool = False, device: str = "cp
 
 def main():
     parser = argparse.ArgumentParser(description="Axelion Benchmark Evaluation")
-    parser.add_argument("--checkpoint", type=str, default="checkpoints/axelion-base-v0.1.pt")
+    parser.add_argument("--checkpoint", type=str, default="checkpoints/axelion-base-1b.pt")
     parser.add_argument("--output", type=str, default="benchmarks/baseline.json")
     parser.add_argument("--instruct", action="store_true")
     args = parser.parse_args()
@@ -97,14 +97,14 @@ def main():
 
     if os.path.exists(args.checkpoint):
         ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
-        config = ckpt.get("config", ModelConfig.create_micro(vocab_size=tokenizer.vocab_size))
+        config = ckpt.get("config", ModelConfig.create_1b(vocab_size=tokenizer.vocab_size))
         config.vocab_size = max(config.vocab_size, tokenizer.vocab_size)
         model = Axelion(config).to(device)
         model.load_checkpoint_weights(ckpt["model"])
         print(f"Loaded checkpoint: {args.checkpoint}")
     else:
-        print(f"Checkpoint {args.checkpoint} not found. Running initialized test model.")
-        config = ModelConfig.create_micro(vocab_size=tokenizer.vocab_size)
+        print(f"Checkpoint {args.checkpoint} not found. Running initialized 1B test model.")
+        config = ModelConfig.create_1b(vocab_size=tokenizer.vocab_size)
         model = Axelion(config).to(device)
 
     model.eval()

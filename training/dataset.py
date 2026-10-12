@@ -1,3 +1,19 @@
+"""
+training/dataset.py — Axelion dataset utilities.
+
+Classes:
+    MemmapDataset          — memory-mapped pretraining dataset
+    SFTDataset             — supervised fine-tuning dataset (multi-turn JSONL)
+
+Functions:
+    sft_collate_fn                   — padding collator for SFT batches
+    create_pretrain_dataloader       — returns a DataLoader over MemmapDataset
+    create_sft_dataloader            — returns a DataLoader over SFTDataset
+    prepare_binary_dataset           — tokenize a text file into a uint16 binary
+    prepare_binary_dataset_chunked   — tokenize a *very large* text file in 64 MB
+                                       chunks, appending to the binary output
+"""
+
 import json
 import os
 from typing import List, Dict, Tuple, Optional
@@ -135,9 +151,26 @@ def create_pretrain_dataloader(
     batch_size: int,
     shuffle: bool = True,
     num_workers: int = 0,
+    pin_memory: bool = False,
 ) -> DataLoader:
+    """Return a DataLoader over a MemmapDataset binary file.
+
+    Args:
+        bin_file_path: Path to the uint16 memmap binary.
+        config:        ModelConfig (used for ``max_seq_len``).
+        batch_size:    Micro-batch size.
+        shuffle:       Whether to shuffle samples (default True).
+        num_workers:   Dataloader worker processes (default 0 for backward compat).
+        pin_memory:    Pin tensors to page-locked memory for faster GPU transfer.
+    """
     dataset = MemmapDataset(bin_file_path, config.max_seq_len)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
 
 
 def create_sft_dataloader(
@@ -147,19 +180,40 @@ def create_sft_dataloader(
     batch_size: int,
     shuffle: bool = True,
     num_workers: int = 0,
+    pin_memory: bool = False,
 ) -> DataLoader:
+    """Return a DataLoader over an SFTDataset JSONL file.
+
+    Args:
+        jsonl_file:  Path to the JSONL file (one JSON object per line).
+        tokenizer:   AxelionTokenizer instance.
+        max_seq_len: Maximum sequence length.
+        batch_size:  Micro-batch size.
+        shuffle:     Whether to shuffle samples (default True).
+        num_workers: Dataloader worker processes (default 0 for backward compat).
+        pin_memory:  Pin tensors to page-locked memory for faster GPU transfer.
+    """
     dataset = SFTDataset(jsonl_file, tokenizer, max_seq_len=max_seq_len)
     return DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
+        pin_memory=pin_memory,
         collate_fn=lambda b: sft_collate_fn(b, pad_token_id=tokenizer.pad_id),
     )
 
 
-def prepare_binary_dataset(text_file_path: str, output_bin_path: str, tokenizer: Optional[AxelionTokenizer] = None):
-    """Tokenize a raw text corpus into uint16 memmap binary file."""
+def prepare_binary_dataset(
+    text_file_path: str,
+    output_bin_path: str,
+    tokenizer: Optional[AxelionTokenizer] = None,
+) -> None:
+    """Tokenize a raw text corpus into a uint16 memmap binary file.
+
+    The entire file is read into memory at once.  For very large files
+    (tens of GB) use :func:`prepare_binary_dataset_chunked` instead.
+    """
     if tokenizer is None:
         tokenizer = AxelionTokenizer()
 
@@ -172,3 +226,66 @@ def prepare_binary_dataset(text_file_path: str, output_bin_path: str, tokenizer:
     os.makedirs(os.path.dirname(os.path.abspath(output_bin_path)), exist_ok=True)
     tokens_np.tofile(output_bin_path)
     print(f"Saved {len(tokens_np):,} tokens to {output_bin_path}")
+
+
+def prepare_binary_dataset_chunked(
+    text_file_path: str,
+    output_bin_path: str,
+    tokenizer: Optional[AxelionTokenizer] = None,
+    chunk_bytes: int = 64 * 1024 * 1024,  # 64 MB per chunk
+) -> None:
+    """Tokenize a *very large* text file in streaming chunks and append to a
+    uint16 binary file.
+
+    This is memory-efficient for corpora that are too large to load at once.
+    If ``output_bin_path`` already exists it will be **appended to**, allowing
+    incremental builds.
+
+    Args:
+        text_file_path: Path to the raw UTF-8 text source.
+        output_bin_path: Path to the output binary (created or appended).
+        tokenizer: AxelionTokenizer instance (created lazily if None).
+        chunk_bytes: Number of bytes to read per chunk (default 64 MB).
+    """
+    if tokenizer is None:
+        tokenizer = AxelionTokenizer()
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_bin_path)), exist_ok=True)
+    total_tokens = 0
+
+    print(f"Chunked tokenization: {text_file_path} -> {output_bin_path} ({chunk_bytes // 1024 // 1024} MB chunks)")
+
+    with open(text_file_path, "r", encoding="utf-8", errors="replace") as src, \
+         open(output_bin_path, "ab") as dst:
+
+        carry = ""  # leftover text from the previous chunk (partial word/line)
+        while True:
+            raw = src.read(chunk_bytes)
+            if not raw:
+                break
+
+            text_chunk = carry + raw
+
+            # Keep last 1 KB as carry to avoid splitting multi-byte characters
+            # or BPE tokens at chunk boundaries.
+            if len(raw) == chunk_bytes:
+                # Not the final chunk — carry the last 1 KB of text
+                carry = text_chunk[-1024:]
+                text_chunk = text_chunk[:-1024]
+            else:
+                carry = ""
+
+            tokens = tokenizer.encode(text_chunk)
+            tokens_np = tokens.numpy().astype(np.uint16)
+            tokens_np.tofile(dst)
+            total_tokens += len(tokens_np)
+            print(f"  ... {total_tokens:,} tokens written", end="\r", flush=True)
+
+        # Flush any remaining carry text
+        if carry:
+            tokens = tokenizer.encode(carry)
+            tokens_np = tokens.numpy().astype(np.uint16)
+            tokens_np.tofile(dst)
+            total_tokens += len(tokens_np)
+
+    print(f"\nDone. Saved {total_tokens:,} tokens to {output_bin_path}")

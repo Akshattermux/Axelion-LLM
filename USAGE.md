@@ -60,6 +60,9 @@ config = ModelConfig.create_mini_gpt()
 # Medium (~322M parameters, 24 layers, 4096 context)
 config = ModelConfig.create_medium()
 
+# 1B Parameter Model (Default, ~1.18B parameters, 24 layers, 4096 context)
+config = ModelConfig.create_1b()  # or ModelConfig()
+
 # Large (~1B parameters, 24 layers, 4096 context)
 config = ModelConfig.create_large()
 ```
@@ -69,11 +72,11 @@ You can also initialize `ModelConfig` directly:
 
 ```python
 config = ModelConfig(
-    vocab_size=50257,
-    max_seq_len=2048,
-    dim=768,
-    n_layers=12,
-    n_heads=12,
+    vocab_size=50261,
+    max_seq_len=4096,
+    dim=2048,
+    n_layers=24,
+    n_heads=16,
     n_kv_heads=4,
     hidden_mult=8.0 / 3.0,
     gradient_checkpointing=True,
@@ -104,26 +107,26 @@ This creates `data/pretraining/train.bin` and `data/pretraining/validation.bin`.
 
 ## 7. Measure the hardware first
 
-Run a short Mini benchmark before choosing a 12-hour token budget:
+Run a short benchmark before choosing a 12-hour token budget:
 
 ```bash
-python train.py --size mini --benchmark-steps 100
+python train.py --size 1b --benchmark-steps 100
 ```
 
 The output reports tokens/sec and the estimated `12 hours * tokens/sec` budget. Use that measurement to set `--max-iters`; do not guess it in advance.
 
 ## 8. Train Axelion Base (`train.py`)
 
-Mini remains the existing 12-layer, 768-dimensional architecture. Its T4-friendly defaults are batch size `1`, gradient accumulation `16`, learning rate `3e-4` to `3e-5`, warmup `500`, validation every `500` steps, and gradient checkpointing enabled.
+The 1B model (`--size 1b`) uses the 24-layer, 2048-dimensional architecture (~1.18B parameters). Its GPU-friendly defaults are batch size `1`, gradient accumulation `16`, learning rate `3e-4` to `3e-5`, warmup `500`, validation every `500` steps, and gradient checkpointing enabled.
 
 ```bash
-python train.py --size mini --data-txt data/pretraining/train.txt --val-bin data/pretraining/validation.bin
+python train.py --size 1b --data-txt data/pretraining/train.txt --val-bin data/pretraining/validation.bin
 ```
 
 Checkpoints include model weights, optimizer state, scaler state, iteration, train loss, validation loss, and perplexity. Resume after an interrupted run with:
 
 ```bash
-python train.py --resume checkpoints/axelion-base-mini.pt --max-iters 10000
+python train.py --resume checkpoints/axelion-base-1b.pt --max-iters 10000
 ```
 
 ## 9. Evaluate Base checkpoints

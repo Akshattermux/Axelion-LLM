@@ -28,6 +28,7 @@ def cmd_params(args):
         "micro": ModelConfig.create_micro(tokenizer.vocab_size),
         "mini": ModelConfig.create_mini_gpt(tokenizer.vocab_size),
         "medium": ModelConfig.create_medium(tokenizer.vocab_size),
+        "1b": ModelConfig.create_1b(tokenizer.vocab_size),
         "large": ModelConfig.create_large(tokenizer.vocab_size),
         "3b": ModelConfig(
             vocab_size=tokenizer.vocab_size,
@@ -127,7 +128,7 @@ def main():
 
     # train
     p_train = subparsers.add_parser("train", help="Run causal pretraining")
-    p_train.add_argument("--size", default="mini", choices=["micro", "mini", "medium", "large"])
+    p_train.add_argument("--size", default="1b", choices=["micro", "mini", "medium", "large", "1b", "1B"])
     p_train.add_argument("--data", default="train_data.txt")
     p_train.add_argument("--bin", default="data/pretraining/train.bin")
     p_train.add_argument("--val-bin", default="data/pretraining/validation.bin")
@@ -153,7 +154,7 @@ def main():
     p_serve.add_argument("--host", default="0.0.0.0")
     p_serve.add_argument("--port", type=int, default=8000)
     p_serve.add_argument("--ckpt", default=None)
-    p_serve.add_argument("--size", default="micro")
+    p_serve.add_argument("--size", default="1b")
 
     # chat
     p_chat = subparsers.add_parser("chat", help="Interactive terminal chat")

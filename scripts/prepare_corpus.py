@@ -14,8 +14,10 @@ BINARY_RATIO_LIMIT = 0.02
 def clean_document(text: str) -> str:
     text = text.replace("\x00", "")
     text = re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>", " ", text, flags=re.I)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+    # Preserve newlines and indentation: collapsing whitespace corrupts code
+    # and makes the resulting corpus unlike the data users will query.
+    lines = [line.rstrip() for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    return "\n".join(lines).strip()
 
 
 def is_usable(text: str) -> bool:

@@ -20,6 +20,8 @@ from axelion.generation import stream_generate, generate_text
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     ckpt_candidates = [
+        "checkpoints/axelion-instruct-1b.pt",
+        "checkpoints/axelion-base-1b.pt",
         "checkpoints/axelion-instruct-v0.1.pt",
         "checkpoints/axelion-base-v0.1.pt",
         "ckpt.pt",
@@ -34,13 +36,13 @@ def main():
     tokenizer = AxelionTokenizer()
 
     if ckpt_path is None:
-        print("No checkpoint found. Initializing micro model for testing.")
-        config = ModelConfig.create_micro(vocab_size=tokenizer.vocab_size)
+        print("No checkpoint found. Initializing 1B model architecture for testing.")
+        config = ModelConfig.create_1b(vocab_size=tokenizer.vocab_size)
         model = Axelion(config).to(device)
     else:
         print(f"Loading model checkpoint from {ckpt_path}...")
         checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
-        config = checkpoint.get("config", ModelConfig.create_micro(vocab_size=tokenizer.vocab_size))
+        config = checkpoint.get("config", ModelConfig.create_1b(vocab_size=tokenizer.vocab_size))
         config.vocab_size = max(config.vocab_size, tokenizer.vocab_size)
         model = Axelion(config).to(device)
         model.load_checkpoint_weights(checkpoint["model"])

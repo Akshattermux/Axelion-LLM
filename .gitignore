@@ -14,11 +14,25 @@ __pycache__/
 *.pt
 *.bin
 checkpoints/*.pt
+checkpoints/*.pt.bak
 data/pretraining/*.bin
+
+# Training logs (keep directory, ignore log files)
+logs/*.log
+logs/*.txt
+!logs/.gitkeep
 
 # PyTorch / CUDA temp files
 *.tmp
 
+# Jupyter
+.ipynb_checkpoints/
+
 # OS files
 .DS_Store
 Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp

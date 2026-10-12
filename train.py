@@ -12,12 +12,17 @@ from training.pretrain import pretrain
 
 def main():
     parser = argparse.ArgumentParser(description="Axelion Training Entry Point")
-    parser.add_argument("--size", type=str, default="mini", choices=["micro", "mini", "medium", "large"], help="Model size preset")
+    parser.add_argument("--size", type=str, default="1b", choices=["micro", "mini", "medium", "large", "1b", "1B"], help="Model size preset (default: 1b)")
     parser.add_argument("--train-bin", type=str, default="data/pretraining/train.bin", help="Path to tokenized binary file")
     parser.add_argument("--val-bin", type=str, default="data/pretraining/validation.bin", help="Separate validation binary file")
-    parser.add_argument("--data-txt", type=str, default="train_data.txt", help="Raw UTF-8 text file; it is tokenized automatically")
+    parser.add_argument(
+        "--data-txt",
+        type=str,
+        default=None,
+        help="Optional raw UTF-8 text file; if omitted, use the prepared --train-bin",
+    )
     parser.add_argument("--val-txt", type=str, default=None, help="Separate raw validation text file")
-    parser.add_argument("--checkpoint-out", type=str, default="checkpoints/axelion-base-mini.pt", help="Output checkpoint file")
+    parser.add_argument("--checkpoint-out", type=str, default="checkpoints/axelion-base-1b.pt", help="Output checkpoint file")
     parser.add_argument("--resume", type=str, default=None, help="Resume from existing checkpoint")
     parser.add_argument("--batch-size", type=int, default=1, help="Micro batch size")
     parser.add_argument("--grad-accum", type=int, default=16, help="Gradient accumulation steps")

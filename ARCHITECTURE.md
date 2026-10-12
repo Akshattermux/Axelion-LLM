@@ -319,32 +319,34 @@ The exact precision should be selected according to the GPU and numerical stabil
 
 ## 17. Model Configuration
 
-A typical configuration is:
+The standard 1 Billion parameter (`1B`) configuration is:
 
 ```python
 ModelConfig(
-    vocab_size=50257,
-    dim=512,
-    n_layers=8,
-    n_heads=8,
-    n_kv_heads=2,
-    hidden_mult=3.5,
-    max_seq_len=2048,
+    vocab_size=50261,
+    dim=2048,
+    n_layers=24,
+    n_heads=16,
+    n_kv_heads=4,
+    hidden_mult=8.0 / 3.0,
+    multiple_of=256,
+    max_seq_len=4096,
     dropout=0.0,
     rope_theta=10000.0,
+    gradient_checkpointing=True,
 )
 ```
 
-Example dimensions:
-- Embedding dimension: 512
-- Transformer layers: 8
-- Query heads: 8
-- KV heads: 2
-- Head dimension: 64
-- Context length: 2048
-- Vocabulary: 50257
-
-Since $512 / 8 = 64$, the attention head dimension is 64.
+Dimensions & Parameters:
+- Embedding dimension: 2048
+- Transformer layers: 24
+- Query heads: 16
+- KV heads: 4 (Grouped-Query Attention with 4:1 ratio)
+- Head dimension: $2048 / 16 = 128$
+- FFN hidden dimension (SwiGLU): 5632
+- Context length: 4096
+- Vocabulary: 50261
+- Total parameters: **1,185,165,312 (~1.185B total, ~1.082B non-embedding)**
 
 ## 18. Parameter Flow
 
@@ -442,13 +444,14 @@ The architecture can later scale by changing:
 
 For example:
 
-| Model | Layers | Dim | Q Heads | KV Heads |
-|-------|--------|-----|---------|----------|
-| Micro | 4 | 128 | 4 | 2 |
-| Small | 8 | 512 | 8 | 2 |
-| Medium | 24 | 1024 | 16 | 4 |
-| Large | 32 | 2048 | 32 | 8 |
-| XL | 48 | 4096 | 32 | 8 |
+| Model | Layers | Dim | Q Heads | KV Heads | Context | Total Params |
+|-------|--------|-----|---------|----------|---------|--------------|
+| Micro | 4 | 256 | 4 | 2 | 256 | ~6.5M |
+| Mini | 12 | 768 | 12 | 4 | 2048 | ~114M |
+| Medium | 24 | 1024 | 16 | 4 | 4096 | ~322M |
+| **1B (Large)** | **24** | **2048** | **16** | **4** | **4096** | **~1.18B** |
+| 3B | 32 | 3072 | 24 | 8 | 4096 | ~3.0B |
+| 7B | 32 | 4096 | 32 | 8 | 4096 | ~6.8B |
 
 These are architectural examples, not claims about capability. Increasing parameter count alone does not produce GPT/Claude-class intelligence. Dataset quality, data quantity, training compute, optimization, tokenizer quality, post-training, evaluation, and inference infrastructure all matter.
 

@@ -241,8 +241,11 @@ class Axelion(nn.Module):
             cache = kv_caches[i] if kv_caches is not None else None
 
             if self.config.gradient_checkpointing and self.training and cache is None:
-                def block_fn(hidden):
-                    return block(hidden, self.rope_cos, self.rope_sin, None)[0]
+                # Bind the current block. Without a default argument, Python's
+                # late-binding closure semantics recompute every layer with the
+                # final block during backward.
+                def block_fn(hidden, current_block=block):
+                    return current_block(hidden, self.rope_cos, self.rope_sin, None)[0]
 
                 x = checkpoint.checkpoint(block_fn, x, use_reentrant=False)
                 new_caches.append(None)
@@ -256,6 +259,8 @@ class Axelion(nn.Module):
         loss = None
         if targets is not None:
             # Cross-entropy with standard ignore_index (supports SFT prompt masking)
+            if not torch.any(targets != ignore_index):
+                raise ValueError("targets contain no non-ignored labels")
             loss = F.cross_entropy(
                 logits.reshape(-1, logits.size(-1)),
                 targets.reshape(-1),

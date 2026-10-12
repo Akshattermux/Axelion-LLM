@@ -1,5 +1,7 @@
 # Axelion LLM
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1aedUBUN9uDyHDSWVriKOnoFTCMxGZNzl)
+
 Axelion is a modern, custom decoder-only Transformer language model built from first principles in PyTorch. It incorporates state-of-the-art architectural innovations (RoPE, RMSNorm, SwiGLU, GQA, SDPA, KV Caching, Weight Tying) and provides a clean, modular pipeline for both pretraining and Supervised Fine-Tuning (SFT) with conversational loss masking.
 
 ---
@@ -65,6 +67,8 @@ Axelion-LLM/
 ---
 
 ## 🚀 Quick Start
+
+> ⚡ **Train on Google Colab (with College ID)**: You can train Axelion-LLM directly on a free GPU using [`Axelion_Colab.ipynb`](Axelion_Colab.ipynb). Simply sign into Colab with your College/University account, upload the notebook, and follow the instructions to train with direct Google Drive checkpoint backup (no GitHub connection needed).
 
 ### 1. Installation
 ```bash

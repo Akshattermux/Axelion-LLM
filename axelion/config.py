@@ -9,14 +9,14 @@ class ModelConfig:
     # Vocabulary / context
     # 50257 (GPT2 base) + 4 special tokens (<|system|>, <|user|>, <|assistant|>, <|end|>)
     vocab_size: int = 50261
-    max_seq_len: int = 2048
+    max_seq_len: int = 4096
 
-    # Transformer width/depth
-    dim: int = 768
-    n_layers: int = 12
+    # Transformer width/depth (1 Billion Parameter Architecture)
+    dim: int = 2048
+    n_layers: int = 24
 
-    # Attention
-    n_heads: int = 12
+    # Attention (Grouped-Query Attention: 16 Q heads, 4 KV heads)
+    n_heads: int = 16
     n_kv_heads: Optional[int] = 4
 
     # Feed-forward (SwiGLU)
@@ -31,7 +31,7 @@ class ModelConfig:
     dropout: float = 0.0
 
     # Memory
-    gradient_checkpointing: bool = False
+    gradient_checkpointing: bool = True
 
     def __post_init__(self):
         if self.n_kv_heads is None:
@@ -150,8 +150,8 @@ class ModelConfig:
         )
 
     @classmethod
-    def create_large(cls, vocab_size: int = 50261):
-        """~1B parameter class."""
+    def create_1b(cls, vocab_size: int = 50261):
+        """Standard 1 Billion parameter model (~1.18B total with tied embeddings, ~1.08B non-embedding)."""
         return cls(
             vocab_size=vocab_size,
             max_seq_len=4096,
@@ -160,5 +160,12 @@ class ModelConfig:
             n_heads=16,
             n_kv_heads=4,
             hidden_mult=8.0 / 3.0,
+            multiple_of=256,
             gradient_checkpointing=True,
         )
+
+    @classmethod
+    def create_large(cls, vocab_size: int = 50261):
+        """~1B parameter class (alias for create_1b)."""
+        return cls.create_1b(vocab_size=vocab_size)
+

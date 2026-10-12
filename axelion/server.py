@@ -6,6 +6,7 @@ Compatible with OpenAI SDK, LangChain, AutoGen, CrewAI, and web interfaces.
 
 import json
 import os
+import secrets
 import sys
 import time
 import uuid
@@ -61,7 +62,8 @@ def require_api_key(authorization: Optional[str] = Header(default=None)):
     """Protect inference routes when AXELION_API_KEY is configured."""
     if not API_KEY:
         return
-    if authorization != f"Bearer {API_KEY}":
+    expected = f"Bearer {API_KEY}"
+    if authorization is None or not secrets.compare_digest(authorization, expected):
         raise HTTPException(status_code=401, detail="Missing or invalid API key")
 
 
@@ -84,8 +86,9 @@ def get_model():
 
 def init_model(
     checkpoint_path: Optional[str] = None,
-    size: str = "micro",
+    size: str = "1b",
     device: Optional[str] = None,
+    allow_uninitialized: bool = False,
 ):
     global _model, _tokenizer, _device, _model_name
     import torch
@@ -96,23 +99,29 @@ def init_model(
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"Loading checkpoint from: {checkpoint_path}")
         ckpt = torch.load(checkpoint_path, map_location=_device, weights_only=False)
-        cfg = ckpt.get("config", ModelConfig.create_micro(vocab_size=_tokenizer.vocab_size))
+        cfg = ckpt.get("config", ModelConfig.create_1b(vocab_size=_tokenizer.vocab_size))
         cfg.vocab_size = max(cfg.vocab_size, _tokenizer.vocab_size)
         _model = Axelion(cfg).to(_device)
         _model.load_checkpoint_weights(ckpt["model"])
         _model_name = os.path.basename(checkpoint_path).replace(".pt", "")
-    else:
+    elif allow_uninitialized:
         preset_map = {
             "micro": ModelConfig.create_micro,
             "mini": ModelConfig.create_mini_gpt,
             "medium": ModelConfig.create_medium,
             "large": ModelConfig.create_large,
+            "1b": ModelConfig.create_1b,
         }
-        cfg_fn = preset_map.get(size.lower(), ModelConfig.create_micro)
+        cfg_fn = preset_map.get(size.lower(), ModelConfig.create_1b)
         cfg = cfg_fn(vocab_size=_tokenizer.vocab_size)
         print(f"Initializing uncheckpointed {size} model for serving on {_device}...")
         _model = Axelion(cfg).to(_device)
         _model_name = f"axelion-{size}"
+    else:
+        raise FileNotFoundError(
+            "A trained checkpoint is required for serving. Pass --ckpt or "
+            "explicitly opt into --allow-uninitialized for local development."
+        )
 
     _model.eval()
     print(f"Model ready. Parameters: {_model.get_num_params() / 1e6:.2f}M | Device: {_device}")

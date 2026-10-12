@@ -73,7 +73,10 @@ $env:AXELION_API_KEY = "replace-with-a-long-random-secret"
 python serve.py --ckpt checkpoints/axelion-instruct-custom.pt
 ```
 
-Clients must then send `Authorization: Bearer replace-with-a-long-random-secret` to inference routes. Health and readiness remain available to orchestrators.
+Clients must then send `Authorization: Bearer <the-configured-secret>` to inference routes. Health and readiness remain available to orchestrators.
+
+The server refuses to start without a trained checkpoint by default. For local architecture
+smoke tests only, use `--allow-uninitialized`; never use that option in a deployed service.
 
 ## Connect an application or agent
 
