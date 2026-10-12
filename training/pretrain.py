@@ -245,13 +245,20 @@ def pretrain(
     )
 
     # ---- optimizer / scaler ---------------------------------------------
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=max_lr,
-        weight_decay=weight_decay,
-        betas=(0.9, 0.95),
-    )
-    scaler = torch.cuda.amp.GradScaler(enabled=(dtype_str == "float16" and on_cuda))
+    optim_kwargs = {
+        "lr": max_lr,
+        "weight_decay": weight_decay,
+        "betas": (0.9, 0.95),
+    }
+    if on_cuda:
+        try:
+            optimizer = torch.optim.AdamW(model.parameters(), fused=True, **optim_kwargs)
+        except Exception:
+            optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
+    else:
+        optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
+
+    scaler = torch.amp.GradScaler("cuda", enabled=(dtype_str == "float16" and on_cuda))
 
     if ckpt_payload is not None:
         model.load_checkpoint_weights(ckpt_payload["model"])
