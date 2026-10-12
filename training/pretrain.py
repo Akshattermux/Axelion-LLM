@@ -252,9 +252,14 @@ def pretrain(
     }
     if on_cuda:
         try:
-            optimizer = torch.optim.AdamW(model.parameters(), fused=True, **optim_kwargs)
+            import bitsandbytes as bnb
+            print("[INFO] Using bitsandbytes 8-bit AdamW (saves ~7.1 GB VRAM)")
+            optimizer = bnb.optim.AdamW8bit(model.parameters(), **optim_kwargs)
         except Exception:
-            optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
+            try:
+                optimizer = torch.optim.AdamW(model.parameters(), fused=True, **optim_kwargs)
+            except Exception:
+                optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
     else:
         optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
 

@@ -172,10 +172,22 @@ def train_sft(
         print(f"[WARN] val_jsonl not found ({val_jsonl}); skipping validation.")
 
     # ---- optimizer / scaler ---------------------------------------------
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95)
-    )
-    scaler = torch.cuda.amp.GradScaler(enabled=(dtype_str == "float16" and on_cuda))
+    optim_kwargs = {
+        "lr": lr,
+        "weight_decay": weight_decay,
+        "betas": (0.9, 0.95),
+    }
+    if on_cuda:
+        try:
+            import bitsandbytes as bnb
+            print("[INFO] Using bitsandbytes 8-bit AdamW for SFT (saves ~7.1 GB VRAM)")
+            optimizer = bnb.optim.AdamW8bit(model.parameters(), **optim_kwargs)
+        except Exception:
+            optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
+    else:
+        optimizer = torch.optim.AdamW(model.parameters(), **optim_kwargs)
+
+    scaler = torch.amp.GradScaler("cuda", enabled=(dtype_str == "float16" and on_cuda))
 
     # ---- LR schedule parameters -----------------------------------------
     steps_per_epoch = math.ceil(len(train_loader) / grad_accum)
