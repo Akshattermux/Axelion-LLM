@@ -1,0 +1,4 @@
+Axelion-LLM local test bundle
+Contains project source and the trained micro-model best checkpoint.
+Install compatible project dependencies before running the model.
+The checkpoint is a PyTorch file; only load trusted checkpoints.

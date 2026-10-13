@@ -216,7 +216,7 @@ def pretrain(
         if not os.path.exists(resume_from):
             raise FileNotFoundError(f"Resume checkpoint not found: {resume_from}")
         print(f"Resuming from {resume_from}")
-        ckpt_payload = torch.load(resume_from, map_location=selected_device, weights_only=False)
+        ckpt_payload = torch.load(resume_from, map_location="cpu", weights_only=False)
         config = ckpt_payload.get("config", config)
 
     # ---- model -----------------------------------------------------------
@@ -272,7 +272,9 @@ def pretrain(
         if "scaler" in ckpt_payload and scaler.is_enabled():
             scaler.load_state_dict(ckpt_payload["scaler"])
         start_iter = ckpt_payload.get("iter_num", -1) + 1
-        best_val_loss = ckpt_payload.get("best_val_loss", ckpt_payload.get("val_loss", float("inf")))
+        best_val_loss = ckpt_payload.get("best_val_loss", float("inf"))
+        if not math.isfinite(best_val_loss):
+            best_val_loss = ckpt_payload.get("val_loss", float("inf"))
 
     # ---- benchmark mode --------------------------------------------------
     if benchmark_steps > 0:
@@ -333,12 +335,16 @@ def pretrain(
                 "val_ppl": val_ppl,
                 "tokens_per_step": tokens_per_step,
             }
+            # Update best loss before saving checkpoint metadata.
+            cmp_loss = last_val_loss if val_loader is not None else last_train_loss
+            improved = cmp_loss < best_val_loss
+            if improved:
+                best_val_loss = cmp_loss
+
+            ckpt_data["best_val_loss"] = best_val_loss
             _save_checkpoint(latest_ckpt_path, ckpt_data)
 
-            # Save best separately
-            cmp_loss = last_val_loss if val_loader is not None else last_train_loss
-            if cmp_loss < best_val_loss:
-                best_val_loss = cmp_loss
+            if improved:
                 _save_checkpoint(best_ckpt_path, ckpt_data)
                 tqdm.write(f"  ✓ New best ({best_val_loss:.4f}) → {best_ckpt_path}")
 

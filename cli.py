@@ -74,6 +74,17 @@ def cmd_chat(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AxelionTokenizer()
     ckpt_path = args.ckpt
+    if not ckpt_path:
+        for candidate in [
+            "checkpoints/axelion-micro-best.pt",
+            "checkpoints/axelion-instruct-v0.1.pt",
+            "checkpoints/axelion-base-v0.1.pt",
+            "checkpoints/axelion-base-mini.pt",
+            "ckpt.pt",
+        ]:
+            if os.path.exists(candidate):
+                ckpt_path = candidate
+                break
 
     if ckpt_path and os.path.exists(ckpt_path):
         print(f"Loading checkpoint: {ckpt_path}...")

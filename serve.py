@@ -4,15 +4,17 @@ Run with: python serve.py [--port 8000] [--host 0.0.0.0] [--ckpt checkpoints/axe
 """
 
 import argparse
+import os
 import uvicorn
 from axelion.server import app, init_model
 
 
 def main():
+    default_ckpt = "checkpoints/axelion-micro-best.pt" if os.path.exists("checkpoints/axelion-micro-best.pt") else None
     parser = argparse.ArgumentParser(description="Serve Axelion LLM as an OpenAI-compatible REST API")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host interface to bind (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
-    parser.add_argument("--ckpt", type=str, default=None, help="Path to checkpoint (.pt) file")
+    parser.add_argument("--ckpt", type=str, default=default_ckpt, help="Path to checkpoint (.pt) file")
     parser.add_argument("--size", type=str, default="1b", choices=["micro", "mini", "medium", "large", "1b", "1B"], help="Preset size if no ckpt provided (default: 1b)")
     parser.add_argument("--device", type=str, default=None, help="Device to load model on ('cpu', 'cuda')")
     parser.add_argument("--allow-uninitialized", action="store_true", help="Allow a random model for local development only")
